@@ -1,5 +1,4 @@
-// pages/index.js
-'use client'
+"use client";
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";
 
@@ -67,7 +66,6 @@ export default function Home() {
           description: "",
         });
         fetchProducts(); // Refresh product list
-        window.alert("Product added successfully!"); // Alert message
       } else {
         console.error("Failed to add product");
       }
@@ -93,8 +91,6 @@ export default function Home() {
           console.log("Product deleted successfully!");
           // Filter out the deleted product from the state
           setProducts(products.filter(product => product.toolID !== toolID));
-          window.alert("Product deleted successfully!"); // Alert message
-
         } else {
           const errorData = await response.json();
           console.error("Failed to delete product:", errorData.message);
@@ -332,4 +328,3 @@ export default function Home() {
     </>
   );
 }
-

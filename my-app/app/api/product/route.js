@@ -1,55 +1,70 @@
 import { MongoClient } from "mongodb";
 import { NextResponse } from "next/server";
 
-export async function GET(request){
-const uri =
-  "mongodb+srv://anshika_sharma:Pulsar420@cluster0.1x5btiw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-const client = new MongoClient(uri, {
+// MongoDB connection URI and options
+const uri = "mongodb+srv://anshika_sharma:Pulsar420@cluster0.1x5btiw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const options = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-});
+};
 
+// Function to connect to MongoDB
+async function connectToDB() {
+  const client = new MongoClient(uri, options);
+  await client.connect();
+  const database = client.db('stock');
+  const inventory = database.collection('inventory');
+  return { client, inventory };
+}
+
+// GET handler to fetch all products
+export async function GET(request) {
+  const { client, inventory } = await connectToDB();
   try {
-    await client.connect();
-    const database = client.db('stock');
-    const inventory = database.collection('inventory');
-   
-    const query = {  };
-    const products = await inventory.find(query).toArray();
-    return NextResponse.json({ success: true, products})
+    const products = await inventory.find({}).toArray();
+    return NextResponse.json({ success: true, products });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message });
   } finally {
-    // Ensures that the client will close when you finish/error
     await client.close();
   }
 }
 
+// POST handler to add a new product
+export async function POST(request) {
+  const { client, inventory } = await connectToDB();
+  try {
+    const body = await request.json();
+    const result = await inventory.insertOne(body);
+    return NextResponse.json({ success: true, product: result.ops[0] });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message });
+  } finally {
+    await client.close();
+  }
+}
 
-export async function POST(request){
+// DELETE handler to remove a product by toolID
+export async function DELETE(request) {
+  const { client, inventory } = await connectToDB();
+  try {
+    // Extract toolID from query parameters
+    const url = new URL(request.url);
+    const toolID = url.searchParams.get('toolID');
 
-
-    let body= await request.json()
-
-    const uri =
-      "mongodb+srv://anshika_sharma:Pulsar420@cluster0.1x5btiw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-    const client = new MongoClient(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    
-      try {
-        await client.connect();
-        const database = client.db('stock');
-        const inventory = database.collection('inventory');
-       
-        const query = {  };
-        const product = await inventory.insertOne(body)
-        return NextResponse.json({ product, ok:true})
-      } finally {
-        // Ensures that the client will close when you finish/error
-        await client.close();
-      }
+    if (!toolID) {
+      return NextResponse.json({ success: false, message: "toolID is required" }, { status: 400 });
     }
 
-
-
-
+    const result = await inventory.deleteOne({ toolID: toolID });
+    if (result.deletedCount === 1) {
+      return NextResponse.json({ success: true, message: "Product deleted successfully" });
+    } else {
+      return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
+    }
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message });
+  } finally {
+    await client.close();
+  }
+}
