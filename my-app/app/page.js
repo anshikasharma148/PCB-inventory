@@ -52,7 +52,7 @@ export default function Home() {
       });
       if (response.ok) {
         console.log("Product added successfully!");
-        setAlert("Your Tool has been added !!");
+       // setAlert("Your Tool has been added !!");
         setProductForm({
           toolID: "",
           toolname: "",
