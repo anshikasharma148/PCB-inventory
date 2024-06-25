@@ -1,4 +1,3 @@
-// pages/index.js
 'use client'
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -16,9 +15,12 @@ export default function Home() {
     weight: "",
     maintain: "",
     description: "",
+    price: "", // Add this line
   });
   const [products, setProducts] = useState([]);
   const [alert, setAlert] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editToolID, setEditToolID] = useState(null);
 
   // Fetch products from the server
   const fetchProducts = async () => {
@@ -39,20 +41,23 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  // Add a product to the server
-  const addProduct = async (e) => {
+  // Add or update a product to the server
+  const saveProduct = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/product", {
-        method: "POST",
+      const method = isEditing ? "PUT" : "POST";
+      const endpoint = isEditing ? `/api/product?toolID=${editToolID}` : "/api/product";
+      
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(productForm),
       });
+
       if (response.ok) {
-        console.log("Product added successfully!");
-       // setAlert("Your Tool has been added !!");
+        console.log(isEditing ? "Product updated successfully!" : "Product added successfully!");
         setProductForm({
           toolID: "",
           toolname: "",
@@ -65,11 +70,16 @@ export default function Home() {
           weight: "",
           maintain: "",
           description: "",
+          price: "", // Add this line
         });
+        setIsEditing(false);
+        setEditToolID(null);
         fetchProducts(); // Refresh product list
-        window.alert("Product added successfully!"); // Alert message
+        window.alert(isEditing ? "Product updated successfully!" : "Product added successfully!");
       } else {
-        console.error("Failed to add product");
+        const errorData = await response.json();
+        console.error("Error:", errorData.message);
+        window.alert(`Error: ${errorData.message}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -105,6 +115,26 @@ export default function Home() {
     }
   };
 
+  // Edit a product
+  const editProduct = (product) => {
+    setIsEditing(true);
+    setEditToolID(product.toolID);
+    setProductForm({
+      toolID: product.toolID,
+      toolname: product.toolname,
+      cate: product.cate,
+      subcate: product.subcate,
+      radius: product.radius,
+      width: product.width,
+      length: product.length,
+      quantity: product.quantity,
+      weight: product.weight,
+      maintain: product.maintain,
+      description: product.description,
+      price: product.price, // Add this line
+    });
+  };
+
   return (
     <>
       <Header />
@@ -112,11 +142,10 @@ export default function Home() {
       <div className="container bg-red-50 mx-auto w-full p-4">
         <div className="text-green-800 text-center">{alert}</div>
 
-        <h1 className="text-3xl font-bold mb-4 text-center text-blue-600">Add a Tool</h1>
-        <form className="bg-white p-6 rounded shadow-md mb-8" onSubmit={addProduct}>
-          {/* Form fields */}
+        <h1 className="text-3xl font-bold mb-4 text-center text-blue-600">{isEditing ? "Edit Tool" : "Add a Tool"}</h1>
+        <form className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" onSubmit={saveProduct}>
           <div className="mb-4">
-            <label htmlFor="toolId" className="block text-gray-700 text-sm font-bold mb-2">
+            <label htmlFor="toolID" className="block text-gray-700 text-sm font-bold mb-2">
               Tool ID
             </label>
             <input
@@ -124,13 +153,14 @@ export default function Home() {
               name="toolID"
               onChange={handleChange}
               type="text"
-              id="toolId"
+              id="toolID"
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               placeholder="Enter tool ID"
+              disabled={!isEditing} // Disable input when adding a new tool
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="toolName" className="block text-gray-700 text-sm font-bold mb-2">
+            <label htmlFor="toolname" className="block text-gray-700 text-sm font-bold mb-2">
               Tool Name
             </label>
             <input
@@ -138,7 +168,7 @@ export default function Home() {
               name="toolname"
               onChange={handleChange}
               type="text"
-              id="toolName"
+              id="toolname"
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               placeholder="Enter tool name"
             />
@@ -228,7 +258,7 @@ export default function Home() {
               value={productForm.quantity}
               name="quantity"
               onChange={handleChange}
-              type="text"
+              type="number"
               id="quantity"
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               placeholder="Enter quantity"
@@ -274,62 +304,83 @@ export default function Home() {
               placeholder="Enter description"
             />
           </div>
+          <div className="mb-4">
+            <label htmlFor="price" className="block text-gray-700 text-sm font-bold mb-2">
+              Price
+            </label>
+            <input
+              value={productForm.price}
+              name="price"
+              onChange={handleChange}
+              type="number"
+              id="price"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Enter price"
+            />
+          </div>
           <div className="flex items-center justify-between">
             <button
               type="submit"
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             >
-              Add Product
+              {isEditing ? "Update Tool" : "Add Tool"}
             </button>
           </div>
         </form>
 
-        <h1 className="text-3xl font-bold mb-4 text-center text-blue-600">Display Current Stock</h1>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Tool ID</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Tool Name</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Category</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Subcategory</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Radius</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Width</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Length</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Quantity</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Weight</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Last Maintenance</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Description</th>
-                <th className="py-2 px-4 border-b border-gray-300 text-left">Actions</th>
+        <h1 className="text-3xl font-bold mb-4 text-center text-blue-600">Product List</h1>
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr>
+              <th className="py-2 px-4 border-b">Tool ID</th>
+              <th className="py-2 px-4 border-b">Tool Name</th>
+              <th className="py-2 px-4 border-b">Category</th>
+              <th className="py-2 px-4 border-b">Subcategory</th>
+              <th className="py-2 px-4 border-b">Radius</th>
+              <th className="py-2 px-4 border-b">Width</th>
+              <th className="py-2 px-4 border-b">Length</th>
+              <th className="py-2 px-4 border-b">Quantity</th>
+              <th className="py-2 px-4 border-b">Weight</th>
+              <th className="py-2 px-4 border-b">Maintenance</th>
+              <th className="py-2 px-4 border-b">Description</th>
+              <th className="py-2 px-4 border-b">Price</th> {/* Add this line */}
+              <th className="py-2 px-4 border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((product) => (
+              <tr key={product.toolID}>
+                <td className="py-2 px-4 border-b">{product.toolID}</td>
+                <td className="py-2 px-4 border-b">{product.toolname}</td>
+                <td className="py-2 px-4 border-b">{product.cate}</td>
+                <td className="py-2 px-4 border-b">{product.subcate}</td>
+                <td className="py-2 px-4 border-b">{product.radius}</td>
+                <td className="py-2 px-4 border-b">{product.width}</td>
+                <td className="py-2 px-4 border-b">{product.length}</td>
+                <td className="py-2 px-4 border-b">{product.quantity}</td>
+                <td className="py-2 px-4 border-b">{product.weight}</td>
+                <td className="py-2 px-4 border-b">{product.maintain}</td>
+                <td className="py-2 px-4 border-b">{product.description}</td>
+                <td className="py-2 px-4 border-b">{product.price}</td> {/* Add this line */}
+                <td className="py-2 px-4 border-b">
+                  <button
+                    className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline mr-2"
+                    onClick={() => editProduct(product)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outline"
+                    onClick={() => deleteProduct(product.toolID)}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.toolID}>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.toolID}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.toolname}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.cate}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.subcate}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.radius}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.width}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.length}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.quantity}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.weight}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.maintain}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">{product.description}</td>
-                  <td className="py-2 px-4 border-b border-gray-300 text-left">
-                    <button onClick={() => deleteProduct(product.toolID)}>
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
 }
-
